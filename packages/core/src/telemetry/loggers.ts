@@ -6,11 +6,14 @@
 
 import type { LogRecord } from '@opentelemetry/api-logs';
 import { logs } from '@opentelemetry/api-logs';
+import { debugLogger } from '../utils/debugLogger.js';
 import type { Config } from '../config/config.js';
 import { SERVICE_NAME } from './constants.js';
 import {
   EVENT_API_ERROR,
+  EVENT_API_REQUEST,
   EVENT_API_RESPONSE,
+  EVENT_API_STREAM_REQUEST,
   EVENT_TOOL_CALL,
 } from './types.js';
 import type {
@@ -68,7 +71,6 @@ import {
   recordAgentRunMetrics,
   recordRecoveryAttemptMetrics,
   recordLinesChanged,
-  recordHookCallMetrics,
 } from './metrics.js';
 import { bufferTelemetryEvent } from './sdk.js';
 import type { UiEvent } from './uiTelemetry.js';
@@ -184,7 +186,15 @@ export function logApiRequest(config: Config, event: ApiRequestEvent): void {
   ClearcutLogger.getInstance(config)?.logApiRequestEvent(event);
   bufferTelemetryEvent(() => {
     const logger = logs.getLogger(SERVICE_NAME);
-    logger.emit(event.toLogRecord(config));
+    const logRecord = event.toLogRecord(config);
+
+    // Standardize event name to ensure it's logged, but use attribute to distinguish
+    const isStream =
+      logRecord.attributes?.['event.name'] === EVENT_API_STREAM_REQUEST;
+    logRecord.attributes!['event.name'] = EVENT_API_REQUEST;
+    logRecord.attributes!['is_stream'] = isStream;
+
+    logger.emit(logRecord);
     logger.emit(event.toSemanticLogRecord(config));
   });
 }
@@ -674,19 +684,26 @@ export function logLlmLoopCheck(
 export function logHookCall(config: Config, event: HookCallEvent): void {
   bufferTelemetryEvent(() => {
     const logger = logs.getLogger(SERVICE_NAME);
-    const logRecord: LogRecord = {
-      body: event.toLogBody(),
-      attributes: event.toOpenTelemetryAttributes(config),
-    };
-    logger.emit(logRecord);
-
-    recordHookCallMetrics(
-      config,
-      event.hook_event_name,
-      event.hook_name,
-      event.duration_ms,
-      event.success,
-    );
+    try {
+      logger.emit({
+        body: event.toLogBody(),
+        attributes: event.toOpenTelemetryAttributes(config),
+      });
+    } catch (e) {
+      debugLogger.warn(
+        `Failed to log hook call: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      // Emit a fallback record if the full one fails (likely due to size)
+      logger.emit({
+        body: `Hook call ${event.hook_event_name}.${event.hook_name} (details omitted due to logging error)`,
+        attributes: {
+          'event.name': 'hook_call',
+          hook_event_name: event.hook_event_name,
+          success: event.success,
+          error: `Logging failed: ${e instanceof Error ? e.message : String(e)}`,
+        },
+      });
+    }
   });
 }
 

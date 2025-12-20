@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { TestRig, validateModelOutput } from './test-helper.js';
+import { TestRig, validateModelOutput, poll } from './test-helper.js';
 import { join } from 'node:path';
 import { writeFileSync, chmodSync, readFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
@@ -28,6 +28,11 @@ const log = (msg) => fs.appendFileSync('mcp-server.log', msg + '\\n');
 
 log('Server starting...');
 
+process.on('uncaughtException', (err) => {
+  log('UNCAUGHT EXCEPTION: ' + err.stack);
+  process.exit(1);
+});
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -35,6 +40,7 @@ const rl = readline.createInterface({
 });
 
 rl.on('line', (line) => {
+  if (!line.trim()) return;
   log('RECEIVED: ' + line);
   try {
     const request = JSON.parse(line);
@@ -48,8 +54,10 @@ rl.on('line', (line) => {
           serverInfo: { name: 'image-server', version: '1.0.0' }
         }
       };
-      log('SENDING: ' + JSON.stringify(response));
+      log('SENDING INITIALIZE RESPONSE: ' + JSON.stringify(response));
       process.stdout.write(JSON.stringify(response) + '\\n');
+    } else if (request.method === 'notifications/initialized') {
+      log('RECEIVED INITIALIZED NOTIFICATION');
     } else if (request.method === 'tools/list') {
       const response = {
         jsonrpc: '2.0',
@@ -62,7 +70,7 @@ rl.on('line', (line) => {
           }]
         }
       };
-      log('SENDING: ' + JSON.stringify(response));
+      log('SENDING TOOLS/LIST RESPONSE: ' + JSON.stringify(response));
       process.stdout.write(JSON.stringify(response) + '\\n');
     } else if (request.method === 'tools/call') {
       const response = {
@@ -79,18 +87,19 @@ rl.on('line', (line) => {
           ]
         }
       };
-      log('SENDING: ' + JSON.stringify(response));
+      log('SENDING TOOLS/CALL RESPONSE: ' + JSON.stringify(response));
       process.stdout.write(JSON.stringify(response) + '\\n');
+    } else {
+      log('RECEIVED UNKNOWN METHOD: ' + request.method);
     }
   } catch (e) {
-    log('ERROR: ' + e.message);
+    log('ERROR processing line: ' + e.message);
   }
 });
 
-// Send initialized notification
-const notification = { jsonrpc: '2.0', method: 'initialized' };
-log('SENDING NOTIFICATION: ' + JSON.stringify(notification));
-process.stdout.write(JSON.stringify(notification) + '\\n');
+rl.on('close', () => {
+  log('Readline interface CLOSED');
+});
 `;
     const tempFakeResponsesPath = join(
       os.tmpdir(),
@@ -185,11 +194,22 @@ process.stdout.write(JSON.stringify(notification) + '\\n');
         hooks: {
           AfterTool: [
             {
-              matcher: 'image-server__get_image',
+              matcher: '*',
               hooks: [
                 {
                   type: 'command',
-                  command: 'echo "{\\"decision\\": \\"allow\\"}"',
+                  command: 'echo "{"decision": "allow"}"',
+                },
+              ],
+            },
+          ],
+          BeforeModel: [
+            {
+              matcher: '*', // Apply to all model calls
+              hooks: [
+                {
+                  type: 'command',
+                  command: `node -e "const fs=require('fs'); let input=''; process.stdin.on('data', d => input += d); process.stdin.on('end', () => { try { const data = JSON.parse(input); if (data.llm_request?.messages) { fs.appendFileSync('history.log', JSON.stringify(data.llm_request.messages) + '\\n'); } console.log(JSON.stringify({decision: 'allow'})); } catch (e) { console.error(e); process.exit(1); } });"`,
                 },
               ],
             },
@@ -212,15 +232,26 @@ process.stdout.write(JSON.stringify(notification) + '\\n');
     settings.mcpServers['image-server'].args = [testServerPath];
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
-    // List files to verify
-    const fsFiles = existsSync(rig.testDir!)
-      ? readFileSync(testServerPath, 'utf-8')
-      : 'DIR_MISSING';
-    console.log('Server script content length:', fsFiles.length);
+    // Wait for MCP tools to be discovered
+    await poll(
+      async () => {
+        const output = await rig.run({
+          args: ['/mcp list'],
+          yolo: false,
+        });
+        return output.includes('image-server__get_image');
+      },
+      30000,
+      1000,
+    );
 
     try {
       const output = await rig.run({
-        args: 'Call image-server__get_image and describe what you see.',
+        args: [
+          'Call image-server__get_image and describe what you see.',
+          '--allowed-tools',
+          'image-server__get_image',
+        ],
         yolo: false,
       });
 
@@ -229,48 +260,86 @@ process.stdout.write(JSON.stringify(notification) + '\\n');
       );
       expect(
         foundToolCall,
-        'Expected to find image-server__get_image tool call',
+        `Expected to find image-server__get_image tool call. Output: ${output}`,
       ).toBeTruthy();
 
-      // Verify hook logs
-      await rig.waitForTelemetryReady();
-      const hookLogs = rig.readHookLogs();
-      const afterToolLog = hookLogs.find(
-        (l) => l.hookCall.hook_event_name === 'AfterTool',
+      // Verify model output
+      validateModelOutput(output, 'Final response', 'MCP image test');
+
+      // Verify history surfacing via BeforeModel hook recording
+      await poll(
+        () => {
+          const historyEntries = rig.readHistoryLog();
+          return (historyEntries as unknown[][]).some(
+            (messages) =>
+              Array.isArray(messages) &&
+              messages.some((m) => {
+                const msg = m as Record<string, unknown>;
+                return (
+                  msg.role === 'user' &&
+                  Array.isArray(msg.content) &&
+                  msg.content.some((p) => {
+                    const part = p as Record<string, unknown>;
+                    return part.type === 'image' || part.inlineData;
+                  })
+                );
+              }),
+          );
+        },
+        30000,
+        500,
       );
-      expect(afterToolLog, 'Expected to find AfterTool hook log').toBeDefined();
 
-      const toolResponse = afterToolLog!.hookCall.hook_input
-        .tool_response as Record<string, unknown>;
-      expect(toolResponse['llmContent']).toBeDefined();
+      const historyEntries = rig.readHistoryLog();
 
-      // Check for image content in llmContent
-      const llmContent = toolResponse['llmContent'] as Array<
-        Record<string, unknown>
-      >;
-      const imagePart = llmContent.find((p) => p['inlineData']);
+      let imagePartInHistory: unknown = undefined;
+      for (const messages of historyEntries as unknown[][]) {
+        if (!Array.isArray(messages)) continue;
+        for (const message of messages) {
+          const msg = message as Record<string, unknown>;
+          if (msg.role !== 'user' || !Array.isArray(msg.content)) continue;
+          const imagePart = msg.content.find((p) => {
+            const part = p as Record<string, unknown>;
+            return part.type === 'image' || part.inlineData;
+          });
+          if (imagePart) {
+            imagePartInHistory = imagePart;
+            break;
+          }
+        }
+        if (imagePartInHistory) break;
+      }
+
       expect(
-        imagePart,
-        'Expected to find image part in llmContent',
+        imagePartInHistory,
+        'Expected to find image data in model history',
       ).toBeDefined();
-      const inlineData = imagePart!['inlineData'] as Record<string, string>;
-      expect(inlineData['mimeType']).toBe('image/png');
-      expect(inlineData['data']).toBe(
+
+      const inlineData =
+        (imagePartInHistory as Record<string, unknown>).inlineData ||
+        imagePartInHistory;
+      expect((inlineData as Record<string, unknown>).mimeType).toBe(
+        'image/png',
+      );
+      expect((inlineData as Record<string, unknown>).data).toBe(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       );
-
-      // Verify model output
-      validateModelOutput(output, '1x1', 'MCP image test');
     } catch (e) {
       // Print logs for debugging
+      const historyLogPath = join(rig.testDir!, 'history.log');
+      if (existsSync(historyLogPath)) {
+        console.error(
+          'History Log Content:\n',
+          readFileSync(historyLogPath, 'utf-8'),
+        );
+      }
+
       const mcpLogPath = join(rig.testDir!, 'mcp-server.log');
       if (existsSync(mcpLogPath)) {
         console.error(
           'MCP Server Log Content:\n',
           readFileSync(mcpLogPath, 'utf-8'),
         );
-      } else {
-        console.error('MCP Server Log file not found at:', mcpLogPath);
       }
       throw e;
     }

@@ -886,46 +886,55 @@ export class TestRig {
   }
 
   private _readAndParseTelemetryLog(): ParsedLog[] {
-    // Telemetry is always written to the test directory
     const logFilePath = join(this.testDir!, 'telemetry.log');
 
     if (!logFilePath || !fs.existsSync(logFilePath)) {
-      if (env['VERBOSE'] === 'true') {
-        console.log(`TELEMETRY: Log file NOT FOUND at ${logFilePath}`);
-      }
       return [];
     }
 
     const content = readFileSync(logFilePath, 'utf-8');
-    if (env['VERBOSE'] === 'true' && content.length > 0) {
-      console.log(
-        `TELEMETRY: Read ${content.length} bytes from ${logFilePath}`,
-      );
-    }
-
-    // Split the content into individual JSON objects
-    // They are separated by "}\n{"
-    const jsonObjects = content
-      .split(/}\n{/)
-      .map((obj, index, array) => {
-        // Add back the braces we removed during split
-        if (index > 0) obj = '{' + obj;
-        if (index < array.length - 1) obj = obj + '}';
-        return obj.trim();
-      })
-      .filter((obj) => obj);
-
     const logs: ParsedLog[] = [];
 
-    for (const jsonStr of jsonObjects) {
-      try {
-        const logData = JSON.parse(jsonStr);
-        logs.push(logData);
-      } catch (e) {
-        // Skip objects that aren't valid JSON
-        if (env['VERBOSE'] === 'true') {
-          console.error('Failed to parse telemetry object:', e);
+    // OpenTelemetry log records in the file might be separated by newlines,
+    // but a single record can also span multiple lines if it has large values.
+    // We use a robust approach to find all JSON objects.
+    let startIdx = 0;
+    while ((startIdx = content.indexOf('{', startIdx)) !== -1) {
+      let braceCount = 0;
+      let inString = false;
+      let escape = false;
+      let endIdx = startIdx;
+
+      for (let i = startIdx; i < content.length; i++) {
+        const char = content[i];
+        if (escape) {
+          escape = false;
+        } else if (char === '\\') {
+          escape = true;
+        } else if (char === '"') {
+          inString = !inString;
+        } else if (!inString) {
+          if (char === '{') braceCount++;
+          else if (char === '}') braceCount--;
         }
+
+        if (braceCount === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+
+      if (braceCount === 0) {
+        const potentialJson = content.substring(startIdx, endIdx);
+        try {
+          logs.push(JSON.parse(potentialJson));
+        } catch {
+          // Not valid JSON, skip
+        }
+        startIdx = endIdx;
+      } else {
+        // No matching closing brace found
+        break;
       }
     }
 
@@ -998,6 +1007,17 @@ export class TestRig {
       (logData) =>
         logData.attributes &&
         logData.attributes['event.name'] === 'gemini_cli.api_request',
+    );
+    return apiRequests;
+  }
+
+  readAllRequests(): ParsedLog[] {
+    const logs = this._readAndParseTelemetryLog();
+    const apiRequests = logs.filter(
+      (logData) =>
+        logData.attributes &&
+        (logData.attributes['event.name'] === 'gemini_cli.api_request' ||
+          logData.attributes['event.name'] === 'gemini_cli.api_stream_request'),
     );
     return apiRequests;
   }
@@ -1102,6 +1122,16 @@ export class TestRig {
       200,
     );
     return run;
+  }
+
+  readHistoryLog(): unknown[] {
+    const logPath = join(this.testDir!, 'history.log');
+    if (!fs.existsSync(logPath)) return [];
+    const content = readFileSync(logPath, 'utf-8');
+    return content
+      .split('\n')
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line));
   }
 
   readHookLogs() {

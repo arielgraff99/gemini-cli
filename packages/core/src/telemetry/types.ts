@@ -357,8 +357,9 @@ export class ToolCallEvent implements BaseTelemetryEvent {
 }
 
 export const EVENT_API_REQUEST = 'gemini_cli.api_request';
+export const EVENT_API_STREAM_REQUEST = 'gemini_cli.api_stream_request';
 export class ApiRequestEvent implements BaseTelemetryEvent {
-  'event.name': 'api_request';
+  'event.name': string;
   'event.timestamp': string;
   model: string;
   prompt: GenAIPromptDetails;
@@ -368,8 +369,9 @@ export class ApiRequestEvent implements BaseTelemetryEvent {
     model: string,
     prompt_details: GenAIPromptDetails,
     request_text?: string,
+    eventName: string = EVENT_API_REQUEST,
   ) {
-    this['event.name'] = 'api_request';
+    this['event.name'] = eventName;
     this['event.timestamp'] = new Date().toISOString();
     this.model = model;
     this.prompt = prompt_details;
@@ -379,10 +381,8 @@ export class ApiRequestEvent implements BaseTelemetryEvent {
   toLogRecord(config: Config): LogRecord {
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_API_REQUEST,
+      'event.name': this['event.name'] || EVENT_API_REQUEST,
       'event.timestamp': this['event.timestamp'],
-      model: this.model,
-      prompt_id: this.prompt.prompt_id,
       request_text: this.request_text,
     };
     return { body: `API request to ${this.model}.`, attributes };
@@ -396,7 +396,7 @@ export class ApiRequestEvent implements BaseTelemetryEvent {
       });
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_GEN_AI_OPERATION_DETAILS,
+      'event.name': this['event.name'],
       'event.timestamp': this['event.timestamp'],
       ...toGenerateContentConfigAttributes(this.prompt.generate_content_config),
       ...requestConventionAttributes,
@@ -407,7 +407,7 @@ export class ApiRequestEvent implements BaseTelemetryEvent {
       attributes['server.port'] = this.prompt.server.port;
     }
 
-    if (config.getTelemetryLogPromptsEnabled() && this.prompt.contents) {
+    if (this.prompt.contents) {
       attributes['gen_ai.input.messages'] = JSON.stringify(
         toInputMessages(this.prompt.contents),
       );
@@ -457,7 +457,7 @@ export class ApiErrorEvent implements BaseTelemetryEvent {
   toLogRecord(config: Config): LogRecord {
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_API_ERROR,
+      'event.name': this['event.name'],
       'event.timestamp': this['event.timestamp'],
       ['error.message']: this.error,
       model_name: this.model,
@@ -486,7 +486,7 @@ export class ApiErrorEvent implements BaseTelemetryEvent {
   toSemanticLogRecord(config: Config): LogRecord {
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_GEN_AI_OPERATION_DETAILS,
+      'event.name': this['event.name'],
       'event.timestamp': this['event.timestamp'],
       ...toGenerateContentConfigAttributes(this.prompt.generate_content_config),
       ...getConventionAttributes(this),
@@ -612,7 +612,7 @@ export class ApiResponseEvent implements BaseTelemetryEvent {
   toLogRecord(config: Config): LogRecord {
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_API_RESPONSE,
+      'event.name': this['event.name'],
       'event.timestamp': this['event.timestamp'],
       model: this.model,
       duration_ms: this.duration_ms,
@@ -645,7 +645,7 @@ export class ApiResponseEvent implements BaseTelemetryEvent {
   toSemanticLogRecord(config: Config): LogRecord {
     const attributes: LogAttributes = {
       ...getCommonAttributes(config),
-      'event.name': EVENT_GEN_AI_OPERATION_DETAILS,
+      'event.name': this['event.name'],
       'event.timestamp': this['event.timestamp'],
       'gen_ai.response.id': this.response.response_id,
       'gen_ai.response.finish_reasons': this.finish_reasons,

@@ -21,6 +21,8 @@ import {
   ApiRequestEvent,
   ApiResponseEvent,
   ApiErrorEvent,
+  EVENT_API_REQUEST,
+  EVENT_API_STREAM_REQUEST,
 } from '../telemetry/types.js';
 import type { Config } from '../config/config.js';
 import {
@@ -57,6 +59,7 @@ export class LoggingContentGenerator implements ContentGenerator {
     promptId: string,
     generationConfig?: GenerateContentConfig,
     serverDetails?: ServerDetails,
+    eventName: string = EVENT_API_REQUEST,
   ): void {
     const requestText = JSON.stringify(contents);
     logApiRequest(
@@ -70,6 +73,7 @@ export class LoggingContentGenerator implements ContentGenerator {
           server: serverDetails,
         },
         requestText,
+        eventName,
       ),
     );
   }
@@ -257,6 +261,7 @@ export class LoggingContentGenerator implements ContentGenerator {
           userPromptId,
           req.config,
           serverDetails,
+          EVENT_API_STREAM_REQUEST,
         );
 
         let stream: AsyncGenerator<GenerateContentResponse>;
