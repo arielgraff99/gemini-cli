@@ -5,7 +5,6 @@
  */
 
 import type { Browser, BrowserContext, Page } from 'playwright';
-import { chromium } from 'playwright';
 
 export class BrowserManager {
   private browser: Browser | null = null;
@@ -14,6 +13,16 @@ export class BrowserManager {
 
   async getPage(): Promise<Page> {
     if (!this.browser || !this.browser.isConnected()) {
+      let chromium;
+      try {
+        const playwright = await import('playwright');
+        chromium = playwright.chromium;
+      } catch (_e) {
+        throw new Error(
+          'Playwright is not installed. Please install it to use the browser agent: npm install playwright',
+        );
+      }
+
       this.browser = await chromium.launch({
         headless: false,
         // channel: 'chrome', // Use actual Google Chrome

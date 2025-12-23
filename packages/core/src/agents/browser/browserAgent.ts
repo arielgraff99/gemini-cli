@@ -41,6 +41,23 @@ export class BrowserAgent {
     const contents: Content[] = [];
     const MAX_ITERATIONS = 20;
 
+    try {
+      // Check if browser is available (and Playwright is installed)
+      await browserManager.getPage();
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        e.message.includes('Playwright is not installed')
+      ) {
+        return `Error: ${e.message}`;
+      }
+      // If other errors occur (e.g. launch failure), log but proceed (or let the loop handle it)
+      if (log)
+        log(
+          `Warning: Failed to launch browser: ${e instanceof Error ? e.message : String(e)}`,
+        );
+    }
+
     await browserTools.updateBorderOverlay({ active: true, capturing: false });
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
