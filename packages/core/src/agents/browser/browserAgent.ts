@@ -126,6 +126,15 @@ ${domSnapshot}`,
       contents.push(response); // Add model response to history
 
       const parts = response.parts || [];
+
+      if (log) {
+        parts.forEach((part) => {
+          if (part.text) {
+            log(part.text);
+          }
+        });
+      }
+
       const functionCalls = parts.filter((p) => 'functionCall' in p);
 
       if (functionCalls.length === 0) {
