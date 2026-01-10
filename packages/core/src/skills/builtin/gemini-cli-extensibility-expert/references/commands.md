@@ -73,9 +73,13 @@ To validate a newly created or modified slash command headlessly:
 
 - **Targeted Command**:
   `gemini --debug --allowed-tools <minimal_tools> "/<command_name> <args>"`
-- **Security & Confirmation**: **You must inform the user** that
-  `--allowed-tools` bypasses confirmation prompts. If you run the command
-  yourself, **wait for user approval**.
+- **Security WARNING**: **You must explicitly WARN the user** that
+  `--allowed-tools` bypasses confirmation prompts, granting the agent elevated
+  privileges for that command.
+- **Offer Alternatives**: Always offer **manual verification** (typing the slash
+  command in an interactive session) as the safest option.
+- **Confirmation**: If you run the headless command yourself, **wait for
+  explicit user approval** after providing the warning.
 - **Troubleshooting**: Use the `--debug` flag to inspect discovery and execution
   logs.
 

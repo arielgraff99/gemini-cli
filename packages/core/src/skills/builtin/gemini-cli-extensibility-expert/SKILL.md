@@ -37,9 +37,10 @@ follow this iterative workflow when creating or modifying customizations:
 When verifying customizations, especially when using headless invocations of
 Gemini CLI, you must prioritize security and user awareness:
 
-1.  **Transparency**: Always inform the user when a verification command uses
-    `--allowed-tools`. Explain that this flag bypasses confirmation prompts for
-    the specified tools.
+1.  **Transparency & Choice**: You MUST explicitly **WARN** the user when a
+    verification command uses `--allowed-tools`, explaining that it bypasses
+    confirmation prompts. Always offer manual verification (running the command
+    interactively) as a safer alternative.
 2.  **Least Privilege**: Only include the absolute minimum set of tools in
     `--allowed-tools` required for the verification.
 3.  **Targeted Prompts**: Use highly specific prompts that trigger the exact

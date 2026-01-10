@@ -70,9 +70,13 @@ To validate that your extension is correctly installed or linked:
     loading logs for commands, hooks, and skills.
 3.  **Component Verification**: Follow the specific verification steps for the
     components your extension provides (Commands, Hooks, Skills, MCP).
-    - **Security & Confirmation**: **You must inform the user** when performing
-      headless verification that `--allowed-tools` bypasses confirmation
-      prompts. If you run the command yourself, **wait for user approval**.
+    - **Security WARNING**: **You must explicitly WARN the user** that
+      `--allowed-tools` bypasses confirmation prompts, granting the agent
+      elevated privileges.
+    - **Offer Alternatives**: Always offer **manual verification** within an
+      interactive session as the safest option.
+    - **Confirmation**: If you run a headless command yourself, **wait for
+      explicit user approval** after providing the warning.
     - **Debug Mode**: Use the `--debug` flag to inspect component loading.
 
 ## Documentation
