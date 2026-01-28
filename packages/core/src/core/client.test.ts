@@ -1849,7 +1849,7 @@ ${JSON.stringify(
       const { getCoreSystemPrompt } = await import('./prompts.js');
       const mockGetCoreSystemPrompt = vi.mocked(getCoreSystemPrompt);
 
-      await client.updateSystemInstruction();
+      client.updateSystemInstruction();
 
       expect(mockGetCoreSystemPrompt).toHaveBeenCalledWith(
         mockConfig,
@@ -1865,7 +1865,7 @@ ${JSON.stringify(
       const { getCoreSystemPrompt } = await import('./prompts.js');
       const mockGetCoreSystemPrompt = vi.mocked(getCoreSystemPrompt);
 
-      await client.updateSystemInstruction();
+      client.updateSystemInstruction();
 
       expect(mockGetCoreSystemPrompt).toHaveBeenCalledWith(
         mockConfig,
