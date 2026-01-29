@@ -151,53 +151,45 @@ export class Storage {
 
   private getProjectIdentifier(): string {
     if (!this.projectIdentifier) {
-      throw new Error(
-        'Storage must be initialized before accessing project-specific paths.',
-      );
+      // Lazily initialize.
+      this.initialize();
     }
-    return this.projectIdentifier;
+    return this.projectIdentifier!;
   }
 
   /**
    * Initializes storage by setting up the project registry and performing migrations.
    */
-  async initialize(): Promise<void> {
-    if (this.projectIdentifier) {
-      return;
-    }
-
+  private initialize(): void {
     const registryPath = path.join(
       Storage.getGlobalGeminiDir(),
       'projects.json',
     );
     const registry = new ProjectRegistry(registryPath);
-    await registry.initialize();
+    registry.initialize();
 
-    const shortId = await registry.getShortId(this.getProjectRoot());
-    console.log(shortId);
-    this.projectIdentifier = shortId;
-
-    await this.performMigration();
+    this.projectIdentifier = registry.getShortId(this.getProjectRoot());
+    this.performMigration();
   }
 
   /**
    * Performs migration of legacy hash-based directories to the new slug-based format.
    * This is called internally by initialize().
    */
-  private async performMigration(): Promise<void> {
+  private performMigration(): void {
     const shortId = this.getProjectIdentifier();
     const oldHash = this.getFilePathHash(this.getProjectRoot());
 
     // Migrate Temp Dir
     const newTempDir = path.join(Storage.getGlobalTempDir(), shortId);
     const oldTempDir = path.join(Storage.getGlobalTempDir(), oldHash);
-    await StorageMigration.migrateDirectory(oldTempDir, newTempDir);
+    StorageMigration.migrateDirectory(oldTempDir, newTempDir);
 
     // Migrate History Dir
     const historyDir = path.join(Storage.getGlobalGeminiDir(), 'history');
     const newHistoryDir = path.join(historyDir, shortId);
     const oldHistoryDir = path.join(historyDir, oldHash);
-    await StorageMigration.migrateDirectory(oldHistoryDir, newHistoryDir);
+    StorageMigration.migrateDirectory(oldHistoryDir, newHistoryDir);
   }
 
   getHistoryDir(): string {

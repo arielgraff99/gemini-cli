@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { debugLogger } from '../utils/debugLogger.js';
 
@@ -17,30 +17,23 @@ export class StorageMigration {
    * @param oldPath The old directory path (hash-based).
    * @param newPath The new directory path (slug-based).
    */
-  static async migrateDirectory(oldPath: string, newPath: string): Promise<void> {
+  static migrateDirectory(oldPath: string, newPath: string): void {
     try {
       // If the new path already exists, we consider migration done or skipped to avoid overwriting.
-      try {
-        await fs.access(newPath);
-        return;
-      } catch {
-        // New path does not exist, proceed with migration check.
-      }
-
       // If the old path doesn't exist, there's nothing to migrate.
-      try {
-        await fs.access(oldPath);
-      } catch {
+      if (fs.existsSync(newPath) || !fs.existsSync(oldPath)) {
         return;
       }
 
       // Ensure the parent directory of the new path exists
       const parentDir = path.dirname(newPath);
-      await fs.mkdir(parentDir, { recursive: true });
-
-      await fs.rename(oldPath, newPath);
+      fs.mkdirSync(parentDir, { recursive: true });
+      fs.renameSync(oldPath, newPath);
     } catch (e) {
-      debugLogger.debug(`Storage Migration: Failed to move ${oldPath} to ${newPath}:`, e);
+      debugLogger.debug(
+        `Storage Migration: Failed to move ${oldPath} to ${newPath}:`,
+        e,
+      );
     }
   }
 }

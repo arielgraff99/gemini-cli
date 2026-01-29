@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolExecutor } from './tool-executor.js';
-import type { Config } from '../index.js';
+import { type Config } from '../index.js';
 import type { ToolResult } from '../tools/tools.js';
 import { makeFakeConfig } from '../test-utils/config.js';
 import { MockTool } from '../test-utils/mock-tool.js';
@@ -29,11 +29,20 @@ vi.mock('../core/coreToolHookTriggers.js', () => ({
   executeToolWithHooks: vi.fn(),
 }));
 
+const hoistedMockProjectRegistry = vi.hoisted(() => vi.fn());
+vi.mock('../config/projectRegistry.js', () => {
+  hoistedMockProjectRegistry.mockImplementation(() => ({
+    initialize: vi.fn(),
+    getShortId: vi.fn().mockReturnValue('project-slug'),
+  }));
+  return { ProjectRegistry: hoistedMockProjectRegistry };
+});
+
 describe('ToolExecutor', () => {
   let config: Config;
   let executor: ToolExecutor;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Use the standard fake config factory
     config = makeFakeConfig();
     executor = new ToolExecutor(config);
@@ -49,6 +58,10 @@ describe('ToolExecutor', () => {
     vi.mocked(fileUtils.formatTruncatedToolOutput).mockReturnValue(
       'TruncatedContent...',
     );
+    hoistedMockProjectRegistry.mockImplementation(() => ({
+      initialize: vi.fn(),
+      getShortId: vi.fn().mockReturnValue('project-slug'),
+    }));
   });
 
   afterEach(() => {

@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { debugLogger } from '../utils/debugLogger.js';
@@ -29,18 +28,18 @@ export class ProjectRegistry {
   /**
    * Initializes the registry by loading data from disk.
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     if (this.data) {
       return;
     }
 
-    if (!existsSync(this.registryPath)) {
+    if (!fs.existsSync(this.registryPath)) {
       this.data = { projects: {} };
       return;
     }
 
     try {
-      const content = await fs.readFile(this.registryPath, 'utf8');
+      const content = fs.readFileSync(this.registryPath, 'utf8');
       this.data = JSON.parse(content);
     } catch (e) {
       debugLogger.debug('Failed to load registry: ', e);
@@ -57,21 +56,21 @@ export class ProjectRegistry {
     return resolved;
   }
 
-  private async save(): Promise<void> {
+  private save(): void {
     if (!this.data) {
       return;
     }
 
     const dir = path.dirname(this.registryPath);
-    if (!existsSync(dir)) {
-      await fs.mkdir(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
 
     try {
       const content = JSON.stringify(this.data, null, 2);
       const tmpPath = `${this.registryPath}.tmp`;
-      await fs.writeFile(tmpPath, content, 'utf8');
-      await fs.rename(tmpPath, this.registryPath);
+      fs.writeFileSync(tmpPath, content, 'utf8');
+      fs.renameSync(tmpPath, this.registryPath);
     } catch (error) {
       debugLogger.debug(
         `Failed to save project registry to ${this.registryPath}:`,
@@ -84,7 +83,7 @@ export class ProjectRegistry {
    * Returns a short identifier for the given project path.
    * If the project is not already in the registry, a new identifier is generated and saved.
    */
-  async getShortId(projectPath: string): Promise<string> {
+  getShortId(projectPath: string): string {
     if (!this.data) {
       throw new Error('ProjectRegistry must be initialized before use');
     }
@@ -100,7 +99,7 @@ export class ProjectRegistry {
       this.data.projects,
     );
     this.data.projects[normalizedPath] = shortId;
-    await this.save();
+    this.save();
     return shortId;
   }
 

@@ -24,6 +24,8 @@ import { StorageMigration } from './storageMigration.js';
 vi.mock('./projectRegistry.js');
 vi.mock('./storageMigration.js');
 
+const PROJECT_SLUG = 'project-slug';
+
 describe('Storage – initialize', () => {
   const projectRoot = '/tmp/project';
   let storage: Storage;
@@ -35,17 +37,19 @@ describe('Storage – initialize', () => {
     // Mock ProjectRegistry to return a predictable shortId
     vi.mocked(ProjectRegistry).prototype.initialize = vi
       .fn()
-      .mockResolvedValue(undefined);
+      .mockReturnValue(undefined);
     vi.mocked(ProjectRegistry).prototype.getShortId = vi
       .fn()
-      .mockResolvedValue('project-slug');
+      .mockReturnValue(PROJECT_SLUG);
 
     // Mock StorageMigration.migrateDirectory
-    vi.mocked(StorageMigration.migrateDirectory).mockResolvedValue(undefined);
+    vi.mocked(StorageMigration.migrateDirectory).mockReturnValue(undefined);
   });
 
-  it('sets up the registry and performs migration', async () => {
-    await storage.initialize();
+  it('sets up the registry and performs migration if `getProjectTempDir` is called', () => {
+    expect(storage.getProjectTempDir()).toBe(
+      path.join(os.homedir(), GEMINI_DIR, 'tmp', PROJECT_SLUG),
+    );
 
     // Verify registry initialization
     expect(ProjectRegistry).toHaveBeenCalled();
@@ -61,14 +65,6 @@ describe('Storage – initialize', () => {
 
     // Verify identifier is set by checking a path
     expect(storage.getProjectTempDir()).toContain(shortId);
-  });
-
-  it('only initializes once', async () => {
-    await storage.initialize();
-    await storage.initialize();
-
-    expect(ProjectRegistry).toHaveBeenCalledTimes(1);
-    expect(StorageMigration.migrateDirectory).toHaveBeenCalledTimes(2); // Still 2 calls from the first initialize
   });
 });
 
@@ -117,8 +113,7 @@ describe('Storage – additional helpers', () => {
     expect(Storage.getUserCommandsDir()).toBe(expected);
   });
 
-  it('getProjectCommandsDir returns project/.gemini/commands', async () => {
-    await storage.initialize();
+  it('getProjectCommandsDir returns project/.gemini/commands', () => {
     const expected = path.join(projectRoot, GEMINI_DIR, 'commands');
     expect(storage.getProjectCommandsDir()).toBe(expected);
   });
@@ -128,8 +123,7 @@ describe('Storage – additional helpers', () => {
     expect(Storage.getUserSkillsDir()).toBe(expected);
   });
 
-  it('getProjectSkillsDir returns project/.gemini/skills', async () => {
-    await storage.initialize();
+  it('getProjectSkillsDir returns project/.gemini/skills', () => {
     const expected = path.join(projectRoot, GEMINI_DIR, 'skills');
     expect(storage.getProjectSkillsDir()).toBe(expected);
   });
@@ -139,8 +133,7 @@ describe('Storage – additional helpers', () => {
     expect(Storage.getUserAgentsDir()).toBe(expected);
   });
 
-  it('getProjectAgentsDir returns project/.gemini/agents', async () => {
-    await storage.initialize();
+  it('getProjectAgentsDir returns project/.gemini/agents', () => {
     const expected = path.join(projectRoot, GEMINI_DIR, 'agents');
     expect(storage.getProjectAgentsDir()).toBe(expected);
   });
@@ -159,8 +152,7 @@ describe('Storage – additional helpers', () => {
     expect(Storage.getGlobalBinDir()).toBe(expected);
   });
 
-  it('getProjectTempPlansDir returns ~/.gemini/tmp/<identifier>/plans', async () => {
-    await storage.initialize();
+  it('getProjectTempPlansDir returns ~/.gemini/tmp/<identifier>/plans', () => {
     const tempDir = storage.getProjectTempDir();
     const expected = path.join(tempDir, 'plans');
     expect(storage.getProjectTempPlansDir()).toBe(expected);

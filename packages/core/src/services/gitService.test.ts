@@ -18,11 +18,7 @@ import { Storage } from '../config/storage.js';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
-import {
-  getProjectHash,
-  GEMINI_DIR,
-  homedir as pathsHomedir,
-} from '../utils/paths.js';
+import { GEMINI_DIR, homedir as pathsHomedir } from '../utils/paths.js';
 import { spawnAsync } from '../utils/shell-utils.js';
 
 vi.mock('../utils/shell-utils.js', () => ({
@@ -81,20 +77,20 @@ vi.mock('../utils/debugLogger.js', () => ({
   debugLogger: hoistedMockDebugLogger,
 }));
 
+const PROJECT_SLUG = 'project-slug';
 const hoistedMockProjectRegistry = vi.hoisted(() => vi.fn());
 vi.mock('../config/projectRegistry.js', () => {
   hoistedMockProjectRegistry.mockImplementation(() => ({
     initialize: vi.fn(),
-    getShortId: vi.fn().mockReturnValue('project-slug'),
+    getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
   }));
-  return {ProjectRegistry: hoistedMockProjectRegistry };
+  return { ProjectRegistry: hoistedMockProjectRegistry };
 });
 
 describe('GitService', () => {
   let testRootDir: string;
   let projectRoot: string;
   let homedir: string;
-  let hash: string;
   let storage: Storage;
 
   beforeEach(async () => {
@@ -103,8 +99,6 @@ describe('GitService', () => {
     homedir = path.join(testRootDir, 'home');
     await fs.mkdir(projectRoot, { recursive: true });
     await fs.mkdir(homedir, { recursive: true });
-
-    hash = getProjectHash(projectRoot);
 
     vi.clearAllMocks();
     hoistedIsGitRepositoryMock.mockReturnValue(true);
@@ -142,10 +136,9 @@ describe('GitService', () => {
     });
     hoistedMockProjectRegistry.mockImplementation(() => ({
       initialize: vi.fn(),
-      getShortId: vi.fn().mockReturnValue('project-slug'),
+      getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
     }));
     storage = new Storage(projectRoot);
-    await storage.initialize();
   });
 
   afterEach(async () => {
@@ -196,7 +189,7 @@ describe('GitService', () => {
     let gitConfigPath: string;
 
     beforeEach(() => {
-      repoDir = path.join(homedir, GEMINI_DIR, 'history', hash);
+      repoDir = path.join(homedir, GEMINI_DIR, 'history', PROJECT_SLUG);
       gitConfigPath = path.join(repoDir, '.gitconfig');
     });
 

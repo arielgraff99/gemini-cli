@@ -141,7 +141,6 @@ export class Logger {
       return;
     }
 
-    await this.storage.initialize();
     this.geminiDir = this.storage.getProjectTempDir();
     this.logFilePath = path.join(this.geminiDir, LOG_FILE_NAME);
 

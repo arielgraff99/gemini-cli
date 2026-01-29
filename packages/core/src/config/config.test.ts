@@ -319,13 +319,34 @@ describe('Server Config (config.ts)', () => {
       expect(mcpStarted).toBe(true);
     });
 
-    it('should initialize ProjectRegistry(via Storage)', async () => {
+    it('should not await MCP initialization in interactive mode', async () => {
       const config = new Config({
         ...baseParams,
+        checkpointing: false,
         interactive: true,
       });
+
+      const { McpClientManager } = await import(
+        '../tools/mcp-client-manager.js'
+      );
+      let mcpStarted = false;
+
+      (McpClientManager as unknown as Mock).mockImplementation(() => ({
+        startConfiguredMcpServers: vi.fn().mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          mcpStarted = true;
+        }),
+        getMcpInstructions: vi.fn(),
+      }));
+
       await config.initialize();
-      expect(mockProjectRegistryInitialize).toHaveBeenCalled();
+
+      // Should return immediately, before MCP finishes
+      expect(mcpStarted).toBe(false);
+
+      // Wait for it to eventually finish to avoid open handles
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      expect(mcpStarted).toBe(true);
     });
 
     describe('getCompressionThreshold', () => {
