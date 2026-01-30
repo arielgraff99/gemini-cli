@@ -752,7 +752,10 @@ describe('CoreToolScheduler with payload', () => {
     const confirmationDetails = awaitingCall.confirmationDetails;
 
     if (confirmationDetails) {
-      const payload: ToolConfirmationPayload = { newContent: 'final version' };
+      const payload: ToolConfirmationPayload = {
+        type: 'edit',
+        newContent: 'final version',
+      };
       await (confirmationDetails as ToolCallConfirmationDetails).onConfirm(
         ToolConfirmationOutcome.ProceedOnce,
         payload,

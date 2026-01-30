@@ -13,7 +13,7 @@ import { MockModifiableTool, MockTool } from '../test-utils/mock-tool.js';
 import type {
   ToolResult,
   ToolInvocation,
-  ToolConfirmationPayload,
+  EditConfirmationPayload,
 } from '../tools/tools.js';
 import type { ModifyContext } from '../tools/modifiable-tool.js';
 import type { Mock } from 'vitest';
@@ -175,7 +175,7 @@ describe('ToolModificationHandler', () => {
 
       const result = await handler.applyInlineModify(
         mockWaitingToolCall,
-        { newContent: 'foo' },
+        { type: 'edit', newContent: 'foo' },
         new AbortController().signal,
       );
 
@@ -193,7 +193,10 @@ describe('ToolModificationHandler', () => {
 
       const result = await handler.applyInlineModify(
         mockWaitingToolCall,
-        { newContent: undefined } as unknown as ToolConfirmationPayload,
+        {
+          type: 'edit',
+          newContent: undefined,
+        } as unknown as EditConfirmationPayload,
         new AbortController().signal,
       );
 
@@ -225,7 +228,7 @@ describe('ToolModificationHandler', () => {
 
       const result = await handler.applyInlineModify(
         mockWaitingToolCall,
-        { newContent: 'new content' },
+        { type: 'edit', newContent: 'new content' },
         new AbortController().signal,
       );
 

@@ -367,7 +367,7 @@ describe('confirmation.ts', () => {
         correlationId: '123e4567-e89b-12d3-a456-426614174000',
         confirmed: true,
         outcome: ToolConfirmationOutcome.ProceedOnce, // Ignored if payload present
-        payload: { newContent: 'inline' },
+        payload: { type: 'edit', newContent: 'inline' },
       });
 
       mockModifier.applyInlineModify.mockResolvedValue({

@@ -986,6 +986,9 @@ function toPermissionOptions(
     case 'ask_user':
       // askuser doesn't need "always allow" options since it's asking questions
       return [...basicPermissionOptions];
+    case 'plan_approval':
+      // plan_approval doesn't need "always allow" options since it's a one-time approval
+      return [...basicPermissionOptions];
     default: {
       const unreachable: never = confirmation;
       throw new Error(`Unexpected: ${unreachable}`);

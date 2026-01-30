@@ -10,6 +10,7 @@ import { Box, Text } from 'ink';
 import { DiffRenderer } from './DiffRenderer.js';
 import { RenderInline } from '../../utils/InlineMarkdownRenderer.js';
 import {
+  type ApprovalMode,
   type SerializableConfirmationDetails,
   type ToolCallConfirmationDetails,
   type Config,
@@ -33,6 +34,7 @@ import {
   REDIRECTION_WARNING_TIP_TEXT,
 } from '../../textConstants.js';
 import { AskUserDialog } from '../AskUserDialog.js';
+import { PlanApprovalDialog } from '../PlanApprovalDialog.js';
 
 export interface ToolConfirmationMessageProps {
   callId: string;
@@ -61,13 +63,22 @@ export const ToolConfirmationMessage: React.FC<
   const allowPermanentApproval =
     settings.merged.security.enablePermanentToolApproval;
 
-  const handlesOwnUI = confirmationDetails.type === 'ask_user';
+  const handlesOwnUI =
+    confirmationDetails.type === 'ask_user' ||
+    confirmationDetails.type === 'plan_approval';
   const isTrustedFolder = config.isTrustedFolder();
 
   const handleConfirm = useCallback(
     (
       outcome: ToolConfirmationOutcome,
-      payload?: { answers?: { [questionIndex: string]: string } },
+      payload?:
+        | { type: 'ask_user'; answers: { [questionIndex: string]: string } }
+        | {
+            type: 'plan_approval';
+            approved: boolean;
+            approvalMode?: ApprovalMode;
+            feedback?: string;
+          },
     ) => {
       void confirm(callId, outcome, payload).catch((error: unknown) => {
         debugLogger.error(
@@ -267,13 +278,42 @@ export const ToolConfirmationMessage: React.FC<
         <AskUserDialog
           questions={confirmationDetails.questions}
           onSubmit={(answers) => {
-            handleConfirm(ToolConfirmationOutcome.ProceedOnce, { answers });
+            handleConfirm(ToolConfirmationOutcome.ProceedOnce, {
+              type: 'ask_user',
+              answers,
+            });
           }}
           onCancel={() => {
             handleConfirm(ToolConfirmationOutcome.Cancel);
           }}
           width={terminalWidth}
           availableHeight={availableBodyContentHeight() ?? 10}
+        />
+      );
+      return { question: '', bodyContent, options: [] };
+    }
+
+    if (confirmationDetails.type === 'plan_approval') {
+      bodyContent = (
+        <PlanApprovalDialog
+          planPath={confirmationDetails.planPath}
+          onApprove={(approvalMode: ApprovalMode) => {
+            handleConfirm(ToolConfirmationOutcome.ProceedOnce, {
+              type: 'plan_approval',
+              approved: true,
+              approvalMode,
+            });
+          }}
+          onFeedback={(feedback: string) => {
+            handleConfirm(ToolConfirmationOutcome.ProceedOnce, {
+              type: 'plan_approval',
+              approved: false,
+              feedback,
+            });
+          }}
+          onCancel={() => {
+            handleConfirm(ToolConfirmationOutcome.Cancel);
+          }}
         />
       );
       return { question: '', bodyContent, options: [] };

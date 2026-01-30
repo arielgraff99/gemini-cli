@@ -16,6 +16,7 @@ import {
   ToolConfirmationOutcome,
   type ToolConfirmationPayload,
   type ToolCallConfirmationDetails,
+  type EditConfirmationPayload,
 } from '../tools/tools.js';
 import type { ValidatingToolCall, WaitingToolCall } from './types.js';
 import type { Config } from '../config/config.js';
@@ -156,7 +157,10 @@ export async function resolveConfirmation(
 
     if (outcome === ToolConfirmationOutcome.ModifyWithEditor) {
       await handleExternalModification(deps, toolCall, signal);
-    } else if (response.payload?.newContent) {
+    } else if (
+      response.payload?.type === 'edit' &&
+      response.payload.newContent
+    ) {
       await handleInlineModification(deps, toolCall, response.payload, signal);
       outcome = ToolConfirmationOutcome.ProceedOnce;
     }
@@ -219,7 +223,7 @@ async function handleExternalModification(
 async function handleInlineModification(
   deps: { state: SchedulerStateManager; modifier: ToolModificationHandler },
   toolCall: ValidatingToolCall,
-  payload: ToolConfirmationPayload,
+  payload: EditConfirmationPayload,
   signal: AbortSignal,
 ): Promise<void> {
   const { state, modifier } = deps;
@@ -277,7 +281,7 @@ async function waitForConfirmation(
                 ? ToolConfirmationOutcome.ProceedOnce
                 : ToolConfirmationOutcome.Cancel,
             payload: resolution.content
-              ? { newContent: resolution.content }
+              ? ({ type: 'edit', newContent: resolution.content } as const)
               : undefined,
           }) as ConfirmationResult,
       )

@@ -25,6 +25,7 @@ function getConfirmationHeader(
     Record<SerializableConfirmationDetails['type'], string>
   > = {
     ask_user: 'Answer Questions',
+    plan_approval: 'Plan Approval',
   };
   if (!details?.type) {
     return 'Action Required';
@@ -70,7 +71,9 @@ export const ToolConfirmationQueue: React.FC<ToolConfirmationQueueProps> = ({
       : undefined;
 
   const borderColor = theme.status.warning;
-  const hideToolIdentity = tool.confirmationDetails?.type === 'ask_user';
+  const hideToolIdentity =
+    tool.confirmationDetails?.type === 'ask_user' ||
+    tool.confirmationDetails?.type === 'plan_approval';
 
   return (
     <OverflowProvider>

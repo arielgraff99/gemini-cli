@@ -307,6 +307,7 @@ describe('AskUserTool', () => {
       if (details && 'onConfirm' in details) {
         const answers = { '0': 'Quick fix (Recommended)' };
         await details.onConfirm(ToolConfirmationOutcome.ProceedOnce, {
+          type: 'ask_user',
           answers,
         });
       }
@@ -341,6 +342,7 @@ describe('AskUserTool', () => {
       // Simulate confirmation with empty answers
       if (details && 'onConfirm' in details) {
         await details.onConfirm(ToolConfirmationOutcome.ProceedOnce, {
+          type: 'ask_user',
           answers: {},
         });
       }

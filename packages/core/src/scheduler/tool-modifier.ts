@@ -11,7 +11,7 @@ import {
   modifyWithEditor,
   type ModifyContext,
 } from '../tools/modifiable-tool.js';
-import type { ToolConfirmationPayload } from '../tools/tools.js';
+import type { EditConfirmationPayload } from '../tools/tools.js';
 import type { WaitingToolCall } from './types.js';
 
 export interface ModificationResult {
@@ -65,7 +65,7 @@ export class ToolModificationHandler {
    */
   async applyInlineModify(
     toolCall: WaitingToolCall,
-    payload: ToolConfirmationPayload,
+    payload: EditConfirmationPayload,
     signal: AbortSignal,
   ): Promise<ModificationResult | undefined> {
     if (

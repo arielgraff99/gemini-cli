@@ -232,7 +232,7 @@ describe('useToolExecutionScheduler', () => {
       call.confirmationDetails as ToolCallConfirmationDetails;
 
     const publishSpy = vi.spyOn(mockMessageBus, 'publish');
-    const mockPayload = { newContent: 'updated code' };
+    const mockPayload = { type: 'edit' as const, newContent: 'updated code' };
     await confirmationDetails.onConfirm(
       ToolConfirmationOutcome.ProceedOnce,
       mockPayload,

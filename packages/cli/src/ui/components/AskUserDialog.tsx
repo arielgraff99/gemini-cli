@@ -702,10 +702,9 @@ const ChoiceQuestionView: React.FC<ChoiceQuestionViewProps> = ({
   const overhead = HEADER_HEIGHT + TITLE_MARGIN + FOOTER_HEIGHT;
   const listHeight = Math.max(1, availableHeight - overhead);
   const questionHeight = Math.min(3, Math.max(1, listHeight - 4));
-  const maxItemsToShow = Math.max(
-    1,
-    Math.floor((listHeight - questionHeight) / 2),
-  );
+  const maxItemsToShow = question.showAllOptions
+    ? selectionItems.length
+    : Math.max(1, Math.floor((listHeight - questionHeight) / 2));
 
   return (
     <Box flexDirection="column">

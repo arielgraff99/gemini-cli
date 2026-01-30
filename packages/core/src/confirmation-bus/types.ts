@@ -100,6 +100,11 @@ export type SerializableConfirmationDetails =
       type: 'ask_user';
       title: string;
       questions: Question[];
+    }
+  | {
+      type: 'plan_approval';
+      title: string;
+      planPath: string;
     };
 
 export interface UpdatePolicy {
@@ -150,6 +155,12 @@ export interface Question {
   multiSelect?: boolean;
   /** Placeholder hint text. Only applies when type='text'. */
   placeholder?: string;
+  /** Markdown content to display before the question. */
+  content?: string;
+  /** Placeholder for the custom "Other" option input. Only applies when type='choice'. Defaults to 'Enter a custom value'. */
+  customOptionPlaceholder?: string;
+  /** When true, all options are shown without scrolling. Only applies when type='choice'. */
+  showAllOptions?: boolean;
 }
 
 export interface AskUserRequest {
