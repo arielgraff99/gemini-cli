@@ -20,6 +20,10 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import { GEMINI_DIR, homedir as pathsHomedir } from '../utils/paths.js';
 import { spawnAsync } from '../utils/shell-utils.js';
+import {
+  initMockProjectRegistry,
+  PROJECT_SLUG,
+} from '../test-utils/mockProjectRegistry.js';
 
 vi.mock('../utils/shell-utils.js', () => ({
   spawnAsync: vi.fn(),
@@ -77,16 +81,6 @@ vi.mock('../utils/debugLogger.js', () => ({
   debugLogger: hoistedMockDebugLogger,
 }));
 
-const PROJECT_SLUG = 'project-slug';
-const hoistedMockProjectRegistry = vi.hoisted(() => vi.fn());
-vi.mock('../config/projectRegistry.js', () => {
-  hoistedMockProjectRegistry.mockImplementation(() => ({
-    initialize: vi.fn(),
-    getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
-  }));
-  return { ProjectRegistry: hoistedMockProjectRegistry };
-});
-
 describe('GitService', () => {
   let testRootDir: string;
   let projectRoot: string;
@@ -134,10 +128,7 @@ describe('GitService', () => {
     hoistedMockCommit.mockResolvedValue({
       commit: 'initial',
     });
-    hoistedMockProjectRegistry.mockImplementation(() => ({
-      initialize: vi.fn(),
-      getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
-    }));
+    initMockProjectRegistry();
     storage = new Storage(projectRoot);
   });
 

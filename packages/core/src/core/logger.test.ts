@@ -28,12 +28,15 @@ import type { Content } from '@google/genai';
 import os from 'node:os';
 import { GEMINI_DIR } from '../utils/paths.js';
 import { debugLogger } from '../utils/debugLogger.js';
+import {
+  initMockProjectRegistry,
+  PROJECT_SLUG,
+} from 'src/test-utils/mockProjectRegistry.js';
 
 const TMP_DIR_NAME = 'tmp';
 const LOG_FILE_NAME = 'logs.json';
 const CHECKPOINT_FILE_NAME = 'checkpoint.json';
 
-const PROJECT_SLUG = 'project-slug';
 const TEST_GEMINI_DIR = path.join(
   os.homedir(),
   GEMINI_DIR,
@@ -71,25 +74,13 @@ vi.mock('../utils/session.js', () => ({
   sessionId: 'test-session-id',
 }));
 
-const hoistedMockProjectRegistry = vi.hoisted(() => vi.fn());
-vi.mock('../config/projectRegistry.js', () => {
-  hoistedMockProjectRegistry.mockImplementation(() => ({
-    initialize: vi.fn(),
-    getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
-  }));
-  return { ProjectRegistry: hoistedMockProjectRegistry };
-});
-
 describe('Logger', () => {
   let logger: Logger;
   const testSessionId = 'test-session-id';
 
   beforeEach(async () => {
     vi.resetAllMocks();
-    hoistedMockProjectRegistry.mockImplementation(() => ({
-      initialize: vi.fn(),
-      getShortId: vi.fn().mockReturnValue(PROJECT_SLUG),
-    }));
+    initMockProjectRegistry();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2025-01-01T12:00:00.000Z'));
     // Clean up before the test

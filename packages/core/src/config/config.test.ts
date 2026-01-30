@@ -45,6 +45,7 @@ import {
   PREVIEW_GEMINI_MODEL,
   PREVIEW_GEMINI_MODEL_AUTO,
 } from './models.js';
+import { initMockProjectRegistry } from '../test-utils/mockProjectRegistry.js';
 
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
@@ -207,19 +208,6 @@ vi.mock('../core/tokenLimits.js', () => ({
 vi.mock('../code_assist/codeAssist.js');
 vi.mock('../code_assist/experiments/experiments.js');
 
-const mockProjectRegistryInitialize = vi.hoisted(() =>
-  vi.fn().mockReturnValue(undefined),
-);
-
-vi.mock('./projectRegistry.js', () => {
-  const ProjectRegistryMock = vi.fn();
-  ProjectRegistryMock.prototype.initialize = mockProjectRegistryInitialize;
-  ProjectRegistryMock.prototype.getShortId = vi
-    .fn()
-    .mockReturnValue('project-slug');
-  return { ProjectRegistry: ProjectRegistryMock };
-});
-
 describe('Server Config (config.ts)', () => {
   const MODEL = DEFAULT_GEMINI_MODEL;
   const SANDBOX: SandboxConfig = {
@@ -250,6 +238,7 @@ describe('Server Config (config.ts)', () => {
   beforeEach(() => {
     // Reset mocks if necessary
     vi.clearAllMocks();
+    initMockProjectRegistry();
     vi.mocked(getExperiments).mockResolvedValue({
       experimentIds: [],
       flags: {},

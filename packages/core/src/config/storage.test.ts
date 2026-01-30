@@ -20,11 +20,13 @@ import { Storage } from './storage.js';
 import { GEMINI_DIR, homedir } from '../utils/paths.js';
 import { ProjectRegistry } from './projectRegistry.js';
 import { StorageMigration } from './storageMigration.js';
+import {
+  initMockProjectRegistry,
+  PROJECT_SLUG,
+} from 'src/test-utils/mockProjectRegistry.js';
 
 vi.mock('./projectRegistry.js');
 vi.mock('./storageMigration.js');
-
-const PROJECT_SLUG = 'project-slug';
 
 describe('Storage – initialize', () => {
   const projectRoot = '/tmp/project';
@@ -33,14 +35,7 @@ describe('Storage – initialize', () => {
   beforeEach(() => {
     storage = new Storage(projectRoot);
     vi.clearAllMocks();
-
-    // Mock ProjectRegistry to return a predictable shortId
-    vi.mocked(ProjectRegistry).prototype.initialize = vi
-      .fn()
-      .mockReturnValue(undefined);
-    vi.mocked(ProjectRegistry).prototype.getShortId = vi
-      .fn()
-      .mockReturnValue(PROJECT_SLUG);
+    initMockProjectRegistry();
 
     // Mock StorageMigration.migrateDirectory
     vi.mocked(StorageMigration.migrateDirectory).mockReturnValue(undefined);
