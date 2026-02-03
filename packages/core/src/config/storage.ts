@@ -165,7 +165,10 @@ export class Storage {
       Storage.getGlobalGeminiDir(),
       'projects.json',
     );
-    const registry = new ProjectRegistry(registryPath);
+    const registry = new ProjectRegistry(registryPath, [
+      Storage.getGlobalTempDir(),
+      path.join(Storage.getGlobalGeminiDir(), 'history'),
+    ]);
     registry.initialize();
 
     this.projectIdentifier = registry.getShortId(this.getProjectRoot());
