@@ -56,7 +56,7 @@ export const GeneralistAgent = (
     return {
       systemPrompt: getCoreSystemPrompt(
         config,
-        /*userMemory=*/ undefined,
+        /*useMemory=*/ undefined,
         /*interactiveOverride=*/ false,
       ),
       query: '${request}',
