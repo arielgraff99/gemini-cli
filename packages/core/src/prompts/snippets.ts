@@ -447,9 +447,6 @@ function shellEfficiencyGuidelines(enabled: boolean): string {
   return `
 ## Shell Tool Efficiency
 
-- **Stderr Capture:** Always append \`2>&1\` to shell commands to capture stderr alongside stdout, since errors and warnings are often emitted on stderr and would otherwise be lost.
-- **Output Redirection:** For commands likely to produce large output (>50 lines), redirect to a temp file first (e.g., \`command > /tmp/out.log 2>&1\`) and then inspect with \`tail\`, \`head\`, or \`grep\`.
-  - **Tip:** To minimize tool-call overhead, combine redirection with immediate analysis in a single command (e.g., \`command > /tmp/out.log 2>&1 && tail -n 30 /tmp/out.log\`).
 - **Quiet Flags:** Always prefer silent or quiet flags (e.g., \`npm install --silent\`, \`git --no-pager\`) to reduce output volume while still capturing necessary information.
 - **Pagination:** Always disable terminal pagination to ensure commands terminate (e.g., use \`git --no-pager\`, \`systemctl --no-pager\`, or set \`PAGER=cat\`).`;
 }
